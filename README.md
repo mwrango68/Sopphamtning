@@ -13,9 +13,12 @@ En liten SwiftUI-app som visar när Stockholm Vatten och Avfall (SVOA) hämtar s
 1. Installera **Swift Playgrounds** från App Store på iPaden.
 2. Ladda ner repot som zip (GitHub → *Code* → *Download ZIP*) och packa upp i appen Filer.
 3. Öppna mappen `Sophamtning.swiftpm` – den öppnas i Swift Playgrounds.
-4. Tryck ▶︎ för att köra. Vill du ha den som egen ikon på hemskärmen: *App-inställningar → Installera på hemskärmen* (kräver Apple-ID inloggat i Swift Playgrounds).
+4. Tryck ▶︎ för att köra. Appen körs då inuti Swift Playgrounds.
 
-Alternativt: öppna `Sophamtning.swiftpm` i Xcode på en Mac och kör på iPaden.
+### Egen ikon på hemskärmen
+- **TestFlight (iPad/iPhone, ingen Mac):** kräver Apple Developer Program (99 USD/år). I Swift Playgrounds: *App-inställningar → Ladda upp till App Store Connect*, lägg till dig själv som testare i App Store Connect och installera via appen TestFlight. Varje bygge gäller i 90 dagar.
+- **Xcode på Mac:** öppna `Sophamtning.swiftpm`, koppla in enheten och kör. Med gratis Apple-ID slutar appen fungera efter 7 dagar och måste installeras om. Med betalt konto gäller den i ett år.
+
 
 ## Datakälla
 Appen anropar samma tjänst som SVOA:s webbsida *När kommer sopbilen?*:
