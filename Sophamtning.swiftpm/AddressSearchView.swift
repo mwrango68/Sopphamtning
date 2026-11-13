@@ -7,10 +7,33 @@ struct AddressSearchView: View {
     @State private var results: [String] = []
     @State private var isSearching = false
     @State private var message: String?
+    @FocusState private var fieldFocused: Bool
 
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    HStack {
+                        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                        TextField("Gatuadress, t.ex. Storgatan 12", text: $query)
+                            .focused($fieldFocused)
+                            .textContentType(.fullStreetAddress)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.words)
+                            .submitLabel(.search)
+                        if !query.isEmpty {
+                            Button {
+                                query = ""
+                                fieldFocused = true
+                            } label: {
+                                Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture { fieldFocused = true }
+                }
                 if let message {
                     Text(message).foregroundStyle(.secondary)
                 }
@@ -26,14 +49,26 @@ struct AddressSearchView: View {
                 }
             }
             .overlay { if isSearching { ProgressView() } }
-            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always),
-                        prompt: "Gatuadress, t.ex. Storgatan 12")
+            .scrollDismissesKeyboard(.interactively)
             .task(id: query) { await search() }
+            .task {
+                // Ge sheetet tid att visas klart innan tangentbordet tas fram.
+                try? await Task.sleep(for: .milliseconds(500))
+                fieldFocused = true
+            }
             .navigationTitle("Välj adress")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Avbryt") { dismiss() }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        fieldFocused.toggle()
+                    } label: {
+                        Image(systemName: fieldFocused ? "keyboard.chevron.compact.down" : "keyboard")
+                    }
+                    .accessibilityLabel(fieldFocused ? "Dölj tangentbord" : "Visa tangentbord")
                 }
             }
         }
