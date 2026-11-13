@@ -5,15 +5,32 @@ import UserNotifications
 enum ReminderScheduler {
     private static let prefix = "sophamtning."
 
-    static func requestAuthorization() async -> Bool {
-        let center = UNUserNotificationCenter.current()
-        let settings = await center.notificationSettings()
-        switch settings.authorizationStatus {
+    enum Permission { case allowed, denied, failed(String) }
+
+    static func isAllowed(_ status: UNAuthorizationStatus) -> Bool {
+        switch status {
         case .authorized, .provisional, .ephemeral: return true
-        case .denied: return false
-        default:
-            return (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+        default: return false
         }
+    }
+
+    /// Kollar aktuell behörighet och frågar användaren bara om ingen
+    /// bedömning gjorts ännu. Läser alltid om status efteråt i stället för
+    /// att lita på returvärdet, som kan bli false/fel vid samtidiga anrop.
+    static func requestAuthorization() async -> Permission {
+        let center = UNUserNotificationCenter.current()
+        var status = await center.notificationSettings().authorizationStatus
+        if status == .notDetermined {
+            var failure: String?
+            do {
+                _ = try await center.requestAuthorization(options: [.alert, .sound])
+            } catch {
+                failure = error.localizedDescription
+            }
+            status = await center.notificationSettings().authorizationStatus
+            if !isAllowed(status), let failure { return .failed(failure) }
+        }
+        return isAllowed(status) ? .allowed : .denied
     }
 
     static func clear() async {

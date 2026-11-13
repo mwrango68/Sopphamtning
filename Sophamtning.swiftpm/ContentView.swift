@@ -44,7 +44,13 @@ struct ContentView: View {
         }
         .task { await store.refreshIfStale() }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await store.refreshIfStale() } }
+            if phase == .active {
+                Task {
+                    await store.refreshIfStale()
+                    // Fånga upp ändrad notisbehörighet efter besök i Inställningar.
+                    await store.updateReminders()
+                }
+            }
         }
     }
 }

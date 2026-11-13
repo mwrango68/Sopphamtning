@@ -10,6 +10,9 @@ final class PickupStore: ObservableObject {
     @Published private(set) var lastUpdated: Date?
     @Published private(set) var isLoading = false
     @Published var errorMessage: String?
+    /// Problem med notiser – visas i Inställningar, skiljt från hämtfel.
+    @Published private(set) var notificationProblem: String?
+    private var reminderUpdate: Task<Void, Never>?
 
     @Published var remindersOn: Bool {
         didSet {
@@ -93,17 +96,34 @@ final class PickupStore: ObservableObject {
         try await client.suggestAddresses(query)
     }
 
+    /// Körs i tur och ordning så att två samtidiga anrop (t.ex. reglaget och
+    /// automatisk uppdatering vid start) inte frågar om behörighet samtidigt.
     func updateReminders() async {
-        if remindersOn {
-            let granted = await ReminderScheduler.requestAuthorization()
-            if !granted {
-                remindersOn = false
-                errorMessage = "Notiser är avstängda för appen. Slå på dem i Inställningar."
-                return
-            }
-            await ReminderScheduler.schedule(upcoming, hour: reminderHour, address: address)
-        } else {
+        let previous = reminderUpdate
+        let task = Task { [weak self] in
+            await previous?.value
+            await self?.applyReminders()
+        }
+        reminderUpdate = task
+        await task.value
+    }
+
+    private func applyReminders() async {
+        guard remindersOn else {
+            notificationProblem = nil
             await ReminderScheduler.clear()
+            return
+        }
+        switch await ReminderScheduler.requestAuthorization() {
+        case .allowed:
+            notificationProblem = nil
+            await ReminderScheduler.schedule(upcoming, hour: reminderHour, address: address)
+        case .denied:
+            // Behåll användarens val – när notiser slås på i Inställningar
+            // planeras de automatiskt nästa gång appen blir aktiv.
+            notificationProblem = "Notiser är avstängda för appen. Slå på dem i Inställningar."
+        case .failed(let reason):
+            notificationProblem = "Kunde inte aktivera notiser: \(reason)"
         }
     }
 }
