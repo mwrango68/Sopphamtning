@@ -83,6 +83,7 @@ struct AddressSearchView: View {
 struct SettingsView: View {
     @EnvironmentObject private var store: PickupStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         NavigationStack {
@@ -93,12 +94,22 @@ struct SettingsView: View {
                         ForEach(15..<23, id: \.self) { Text(String(format: "%02d:00", $0)).tag($0) }
                     }
                     .disabled(!store.remindersOn)
+                    if let problem = store.notificationProblem {
+                        Label(problem, systemImage: "bell.slash.fill")
+                            .foregroundStyle(.orange)
+                        Button("Öppna notisinställningar") {
+                            if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
+                                openURL(url)
+                            }
+                        }
+                    }
                 } header: {
                     Text("Påminnelser")
                 } footer: {
                     Text("Notiserna planeras när appen öppnas och uppdaterar hämtdatum. Öppna appen då och då så hålls de aktuella.")
                 }
             }
+            .task { await store.updateReminders() }
             .navigationTitle("Inställningar")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
