@@ -5,7 +5,7 @@ import UserNotifications
 enum ReminderScheduler {
     private static let prefix = "sophamtning."
 
-    enum Permission { case allowed, denied, failed(String) }
+    enum Permission { case allowed, denied, notSupported, failed(String) }
 
     static func isAllowed(_ status: UNAuthorizationStatus) -> Bool {
         switch status {
@@ -24,6 +24,10 @@ enum ReminderScheduler {
             var failure: String?
             do {
                 _ = try await center.requestAuthorization(options: [.alert, .sound])
+            } catch let error as UNError where error.code == .notificationsNotAllowed {
+                // UNErrorDomain error 1: systemet tillåter inte att appen ens
+                // frågar. Händer när appen körs inuti Swift Playgrounds.
+                return .notSupported
             } catch {
                 failure = error.localizedDescription
             }

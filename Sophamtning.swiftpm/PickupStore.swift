@@ -122,6 +122,9 @@ final class PickupStore: ObservableObject {
             // Behåll användarens val – när notiser slås på i Inställningar
             // planeras de automatiskt nästa gång appen blir aktiv.
             notificationProblem = "Notiser är avstängda för appen. Slå på dem i Inställningar."
+        case .notSupported:
+            notificationProblem = "Notiser fungerar inte när appen körs inuti Swift Playgrounds. "
+                + "Installera appen via TestFlight eller Xcode för att få påminnelser."
         case .failed(let reason):
             notificationProblem = "Kunde inte aktivera notiser: \(reason)"
         }
