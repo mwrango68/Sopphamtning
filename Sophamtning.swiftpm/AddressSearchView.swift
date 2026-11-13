@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct AddressSearchView: View {
     @EnvironmentObject private var store: PickupStore
@@ -7,6 +8,7 @@ struct AddressSearchView: View {
     @State private var results: [String] = []
     @State private var isSearching = false
     @State private var message: String?
+    @State private var keyboardUp = true
 
     var body: some View {
         NavigationStack {
@@ -25,15 +27,29 @@ struct AddressSearchView: View {
                     }
                 }
             }
+            .safeAreaInset(edge: .top) {
+                AddressField(text: $query, isFirstResponder: $keyboardUp,
+                             placeholder: "Gatuadress, t.ex. Storgatan 12")
+                    .frame(height: 44)
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .background(.bar)
+            }
             .overlay { if isSearching { ProgressView() } }
-            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always),
-                        prompt: "Gatuadress, t.ex. Storgatan 12")
             .task(id: query) { await search() }
             .navigationTitle("Välj adress")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Avbryt") { dismiss() }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        keyboardUp.toggle()
+                    } label: {
+                        Image(systemName: keyboardUp ? "keyboard.chevron.compact.down" : "keyboard")
+                    }
+                    .accessibilityLabel(keyboardUp ? "Dölj tangentbord" : "Visa tangentbord")
                 }
             }
         }
@@ -90,6 +106,74 @@ struct SettingsView: View {
                     Button("Klar") { dismiss() }
                 }
             }
+        }
+    }
+}
+
+/// UIKit-textfält. SwiftUI:s TextField/.searchable tar inte alltid fram
+/// tangentbordet i ett sheet i Swift Playgrounds – UITextField gör det.
+struct AddressField: UIViewRepresentable {
+    @Binding var text: String
+    @Binding var isFirstResponder: Bool
+    var placeholder: String
+
+    func makeUIView(context: Context) -> UITextField {
+        let field = UITextField()
+        field.placeholder = placeholder
+        field.borderStyle = .roundedRect
+        field.clearButtonMode = .whileEditing
+        field.textContentType = .fullStreetAddress
+        field.autocorrectionType = .no
+        field.autocapitalizationType = .words
+        field.keyboardType = .default
+        field.returnKeyType = .search
+        field.font = .preferredFont(forTextStyle: .body)
+        let icon = UIImageView(image: UIImage(systemName: "magnifyingglass"))
+        icon.tintColor = .secondaryLabel
+        icon.contentMode = .center
+        icon.frame = CGRect(x: 0, y: 0, width: 32, height: 20)
+        field.leftView = icon
+        field.leftViewMode = .always
+        field.delegate = context.coordinator
+        field.addTarget(context.coordinator, action: #selector(Coordinator.changed(_:)), for: .editingChanged)
+        field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        return field
+    }
+
+    func updateUIView(_ field: UITextField, context: Context) {
+        context.coordinator.parent = self
+        if field.text != text { field.text = text }
+        if isFirstResponder, !field.isFirstResponder {
+            // Vänta tills fältet ligger i fönstret (sheetet animeras in).
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                if isFirstResponder, field.window != nil { field.becomeFirstResponder() }
+            }
+        } else if !isFirstResponder, field.isFirstResponder {
+            field.resignFirstResponder()
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        var parent: AddressField
+        init(_ parent: AddressField) { self.parent = parent }
+
+        @objc func changed(_ field: UITextField) {
+            parent.text = field.text ?? ""
+        }
+
+        func textFieldDidBeginEditing(_ textField: UITextField) {
+            if !parent.isFirstResponder { parent.isFirstResponder = true }
+        }
+
+        func textFieldDidEndEditing(_ textField: UITextField) {
+            if parent.isFirstResponder { parent.isFirstResponder = false }
+        }
+
+        func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+            textField.resignFirstResponder()
+            return true
         }
     }
 }
